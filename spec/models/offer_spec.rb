@@ -1,3 +1,53 @@
+shared_examples 'offer time validation' do |offer_start, offer_end|
+  context "when #{offer_start} is specified" do
+    context "when #{offer_start} is in the past" do
+      let(offer_start) { 1.day.ago }
+
+      it { should_not be_valid }
+
+      context 'when the offer is archived' do
+        before { subject.aasm_state = :archived }
+
+        it { should be_valid }
+      end
+    end
+
+    context "when #{offer_start} is not in the past" do
+      let(offer_start) { Date.today }
+
+      it { should be_valid }
+    end
+  end
+
+  context "when #{offer_start} and #{offer_end} are specified" do
+    let(offer_start) { 2.days.ago }
+    let(offer_end) { 2.days.from_now }
+
+    context "when #{offer_end} is in the past" do
+      let(offer_end) { 1.day.ago }
+
+      it { should_not be_valid }
+
+      context 'when the offer is archived' do
+        before { subject.aasm_state = :archived }
+
+        it { should be_valid }
+      end
+    end
+
+    context "when #{offer_start} is after #{offer_end}" do
+      let(:start_on) { 2.days.from_now }
+      let(:end_on) { 1.day.from_now }
+
+      it { should_not be_valid }
+    end
+
+    context "when #{offer_start} is before #{offer_end}" do
+      it { should be_valid }
+    end
+  end
+end
+
 describe Offer, type: :model do
   describe 'associations' do
     it { should belong_to(:offerer) }
@@ -8,49 +58,31 @@ describe Offer, type: :model do
   describe 'validations' do
     it { should validate_presence_of(:title) }
     it { should validate_presence_of(:place) }
-    it { should validate_presence_of(:start_at) }
-    it { should validate_presence_of(:end_at) }
+    it { should validate_presence_of(:time_format) }
 
-    describe 'end_at_must_be_in_the_future' do
-      subject { build(:offer, :published, start_at: 2.days.ago, end_at: end_at) }
-
-      context 'when end_at is in the future' do
-        let(:end_at) { 1.day.from_now }
-
-        it { should be_valid }
+    describe 'offer_time_must_be_specified' do
+      subject do
+        build(:offer,
+              :details_specified,
+              start_on: start_on,
+              end_on: end_on,
+              start_at: start_at,
+              end_at: end_at)
       end
 
-      context 'when end_at is in the past' do
-        let(:end_at) { 1.day.ago }
+      let(:start_on) { nil }
+      let(:end_on) { nil }
+      let(:start_at) { nil }
+      let(:end_at) { nil }
 
-        context 'when the offer is not archived' do
-          it { should_not be_valid }
-        end
-
-        context 'when the offer is archived' do
-          subject { build(:offer, :archived, start_at: 2.days.ago, end_at: end_at) }
-
-          it { should be_valid }
+      context 'when time is not specified' do
+        it 'is not valid' do
+          expect(subject.valid?).to eq false
+          expect(subject.errors[:base]).to include('time must be specified')
         end
       end
-    end
 
-    describe 'end_at_must_be_after_start_at' do
-      subject { build(:offer, start_at: start_at, end_at: end_at) }
-
-      context 'when end_at is before start_at' do
-        let(:start_at) { 2.days.from_now }
-        let(:end_at) { 1.day.from_now }
-
-        it { should_not be_valid }
-      end
-
-      context 'when end_at is after start_at' do
-        let(:start_at) { 1.day.from_now }
-        let(:end_at) { 2.days.from_now }
-
-        it { should be_valid }
-      end
+      include_examples 'offer time validation', :start_on, :end_on
     end
   end
 
