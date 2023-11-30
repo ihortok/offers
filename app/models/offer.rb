@@ -1,6 +1,13 @@
 class Offer < ApplicationRecord
   include AASM
 
+  enum time_format: {
+    date: 'date',
+    date_and_time: 'date_and_time',
+    date_range: 'date_range',
+    date_and_time_range: 'date_and_time_range'
+  }
+
   has_rich_text :conditions
 
   # associations
@@ -11,10 +18,8 @@ class Offer < ApplicationRecord
   # validations
   validates :title, presence: true
   validates :place, presence: true
-  validates :start_at, presence: true
-  validates :end_at, presence: true
-  validate :end_at_must_be_in_the_future
-  validate :end_at_must_be_after_start_at
+  validates :time_format, presence: true
+  validate :time_must_be_specified
 
   # scopes
   scope :for, lambda { |user|
@@ -69,6 +74,26 @@ class Offer < ApplicationRecord
   end
 
   private
+
+  def time_must_be_specified
+    return errors.add(:base, :time_must_be_specified) if start_at.nil? && start_on.nil?
+
+    %i[at on].each do |attr|
+      offer_start_attr = "start_#{attr}".to_sym
+      offer_end_attr = "end_#{attr}".to_sym
+      offer_start_time = public_send offer_start_attr
+      offer_end_time = public_send offer_end_attr
+
+      next unless offer_start_time.present?
+
+      if offer_end_time.present?
+        errors.add(offer_end_attr, :cannot_be_in_the_past) if !archived? && offer_end_time < Date.current
+        errors.add(offer_end_attr, :cannot_be_earlier_than_start) if offer_end_time <= offer_start_time
+      elsif offer_start_time < Date.current && !archived?
+        errors.add(:offer_start_attr, :cannot_be_in_the_past)
+      end
+    end
+  end
 
   def end_at_must_be_in_the_future
     return if end_at.blank?

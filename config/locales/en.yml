@@ -146,16 +146,27 @@ en:
       offer:
         title: "Title"
         place: "Place"
-        start_at: "When start?"
-        end_at: "When end?"
+        srart_on: "Start date"
+        end_on: "End date"
+        start_at: "Start date and time"
+        end_at: "Start date and time"
         conditions: "Conditions"
     errors:
       models:
         offer:
           attributes:
+            start_at:
+              cannot_be_in_the_past: "can't be in the past if end date is not specified"
+            start_on:
+              cannot_be_in_the_past: "can't be in the past if end date is not specified"
             end_at:
-              must_be_in_the_future: "must be in the future"
-              must_be_after_start_at: "must be after start"
+              cannot_be_in_the_past: "can't be in the past"
+              cannot_be_earlier_than_start: "can't be earlier than start date"
+            end_on:
+              cannot_be_in_the_past: "can't be in the past"
+              cannot_be_earlier_than_start: "can't be earlier than start date"
+            base:
+              time_must_be_specified: "time must be specified"
         offer_invitation:
           attributes:
             user:
